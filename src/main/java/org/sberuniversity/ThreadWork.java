@@ -1,7 +1,9 @@
 package org.sberuniversity;
 
+import javax.xml.datatype.DatatypeConstants;
+import java.util.Random;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
+
 
 public class ThreadWork {
     Scanner scanner = new Scanner(System.in);
@@ -12,10 +14,10 @@ public class ThreadWork {
             int enter = scanner.nextInt();
             switch (enter) {
                 case 1:
-                    scalableThreadPoolTask();
+                    FixedThreadPoolTask();
                     break;
                 case 2:
-                    FixedThreadPoolTask();
+                    scalableThreadPoolTask();
                     break;
             }
         }
@@ -29,28 +31,28 @@ public class ThreadWork {
         // Запускаем пул потоков
         scalableThreadPool.start();
 
-        // Добавляем 10 задач для выполнения
+
         for (int i = 0; i < 10; i++) {
             int taskId = i;
+            try{
+                Thread.sleep(500);
+            }catch (InterruptedException ignored){}
             scalableThreadPool.execute(() -> {
                 System.out.println("Task " + taskId + " is running on thread " + Thread.currentThread().getName());
                 try {
+                    Random random = new Random();
                     // Симулируем работу задачи с задержкой
-                    TimeUnit.SECONDS.sleep(2);
+                    Thread.sleep(random.nextInt(1000) + 5000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
                 System.out.println("Task " + taskId + " has completed.");
             });
         }
+        System.out.println("Добавили все задачи");
 
         // Ждем выполнения всех задач (время ожидания должно быть больше, чем общее время выполнения всех задач)
-        try {
-            TimeUnit.SECONDS.sleep(25); // Время может варьироваться в зависимости от задания
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
+        scalableThreadPool.waitForTasks(); // Время может варьироваться в зависимости от задания
         // Завершаем работу пула потоков
         scalableThreadPool.shutdown();
         System.out.println("Thread pool has been shut down.");
@@ -63,26 +65,23 @@ public class ThreadWork {
         threadPool.start();
 
         // Добавляем 10 задач для выполнения
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i <30;i++) {
             int taskId = i;
             threadPool.execute(() -> {
                 System.out.println("Task " + taskId + " is running on thread " + Thread.currentThread().getName());
                 try {
+                    Random random = new Random();
                     // Симулируем работу задачи с задержкой
-                    TimeUnit.SECONDS.sleep(2);
+                    Thread.sleep(random.nextInt(3000) + 1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
                 System.out.println("Task " + taskId + " has completed.");
             });
         }
-
+        System.out.println("Добавили все задачи");
         // Ждем выполнения всех задач
-        try {
-            TimeUnit.SECONDS.sleep(15);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        threadPool.waitForTasks(); // Время может варьироваться в зависимости от задания
 
         // Завершаем работу пула потоков
         threadPool.shutdown();
@@ -92,10 +91,10 @@ public class ThreadWork {
     private static ThreadPool getThreadPool(boolean useScalablePool) {
         if (useScalablePool) {
             // Создаем масштабируемый пул с минимальным количеством потоков 2 и максимальным 5
-            return new ScalableThreadPool(2, 5);
+            return new FixedThreadPool(1);
         } else {
             // Создаем фиксированный пул с 3 потоками
-            return new FixedThreadPool(3);
+            return new ScalableThreadPool(2, 5);
         }
     }
 

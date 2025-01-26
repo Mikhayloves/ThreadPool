@@ -22,11 +22,24 @@ public class FixedThreadPool implements ThreadPool {
 
     @Override
     public void execute(Runnable task) {
-        try {
-            queue.put(task);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        queue.offer(task);
+    }
+
+    @Override
+    public void waitForTasks() {
+        while (!queue.isEmpty()) {
+            while(isAnyWorkerBusy()){
+            }
         }
+    }
+
+    private boolean isAnyWorkerBusy() {
+        for (Worker worker : workers) {
+            if (worker.isWorking()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -46,6 +59,7 @@ public class FixedThreadPool implements ThreadPool {
 
     private static class Worker extends Thread {
         private final BlockingDeque<Runnable> queue;
+        private boolean isWorking = false;
 
         public Worker(BlockingDeque<Runnable> queue) {
             this.queue = queue;
@@ -55,12 +69,18 @@ public class FixedThreadPool implements ThreadPool {
         public void run() {
             while (!isInterrupted()) {
                 try {
+                    isWorking = false;
                     Runnable task = queue.take();
+                    isWorking = true;
                     task.run();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
+        }
+
+        public boolean isWorking() {
+            return isWorking;
         }
     }
 }
