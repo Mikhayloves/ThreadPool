@@ -8,6 +8,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class FixedThreadPool implements ThreadPool {
     private BlockingDeque<Runnable> queue = new LinkedBlockingDeque<>();
     private final List<Worker> workers;
+    private boolean isQueueBlocked = false;
 
     public FixedThreadPool(int countThread) {
         this.workers = createWorker(countThread);
@@ -22,15 +23,20 @@ public class FixedThreadPool implements ThreadPool {
 
     @Override
     public void execute(Runnable task) {
+        if(isQueueBlocked) {
+            throw new IllegalStateException("Can't add new task while waiting for tasks");
+        }
         queue.offer(task);
     }
 
     @Override
     public void waitForTasks() {
+        isQueueBlocked = true;
         while (!queue.isEmpty()) {
             while(isAnyWorkerBusy()){
             }
         }
+        isQueueBlocked = false;
     }
 
     private boolean isAnyWorkerBusy() {
@@ -44,6 +50,8 @@ public class FixedThreadPool implements ThreadPool {
 
     @Override
     public void shutdown() {
+        waitForTasks();
+        isQueueBlocked = true;
         for (Worker worker : workers) {
             worker.interrupt();
         }

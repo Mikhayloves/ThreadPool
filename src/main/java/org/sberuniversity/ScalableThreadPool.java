@@ -15,6 +15,7 @@ public class ScalableThreadPool implements ThreadPool {
     private AtomicInteger freeThreadsCount;
     private WorkerDoneCallback workerDoneCallback;
     private final Object workerDoneCallbackLock = new Object();
+    private volatile boolean isQueueBlocked;
 
     public ScalableThreadPool(int minThreads, int maxThreads) {
         this.minThreads = minThreads;
@@ -23,7 +24,7 @@ public class ScalableThreadPool implements ThreadPool {
         workerDoneCallback = () -> {
             if (queue.isEmpty()) {
                 synchronized (workerDoneCallbackLock) {
-                    if (workers.size() > minThreads) {
+                    if (workers.size() > this.minThreads) {
                         System.out.println("Был удален поток " + Thread.currentThread().getName() + " из списка рабочих потоков");
                         workers.remove((Worker) Thread.currentThread());
                         freeThreadsCount.decrementAndGet();
@@ -46,6 +47,9 @@ public class ScalableThreadPool implements ThreadPool {
 
     @Override
     public void execute(Runnable task) {
+        if (isQueueBlocked) {
+            throw new IllegalStateException("Can't add new task while waiting for tasks");
+        }
         if (freeThreadsCount.get() == 0 && workers.size() < maxThreads) {
             // Если количество рабочих потоков меньше максимального, добавляем новый
             Worker worker = new Worker(queue, freeThreadsCount, workerDoneCallback);
@@ -59,14 +63,18 @@ public class ScalableThreadPool implements ThreadPool {
 
     @Override
     public void waitForTasks() {
+        isQueueBlocked = true;
         while (!queue.isEmpty()) {
             while (freeThreadsCount.get() != workers.size()) {
             }
         }
+        isQueueBlocked = false;
     }
 
     @Override
     public void shutdown() {
+        waitForTasks();
+        isQueueBlocked = true;
         for (Worker worker : workers) {
             worker.interrupt();
         }
