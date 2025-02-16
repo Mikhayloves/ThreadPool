@@ -51,9 +51,6 @@ public class ThreadWork {
         }
         System.out.println("Добавили все задачи");
 
-        // Ждем выполнения всех задач (время ожидания должно быть больше, чем общее время выполнения всех задач)
-        scalableThreadPool.waitForTasks(); // Время может варьироваться в зависимости от задания
-        // Завершаем работу пула потоков
         scalableThreadPool.shutdown();
         System.out.println("Thread pool has been shut down.");
     }
@@ -80,9 +77,6 @@ public class ThreadWork {
             });
         }
         System.out.println("Добавили все задачи");
-        // Ждем выполнения всех задач
-        threadPool.waitForTasks(); // Время может варьироваться в зависимости от задания
-
         // Завершаем работу пула потоков
         threadPool.shutdown();
         System.out.println("Thread pool has been shut down.");
@@ -91,7 +85,7 @@ public class ThreadWork {
     private static ThreadPool getThreadPool(boolean useScalablePool) {
         if (useScalablePool) {
             // Создаем масштабируемый пул с минимальным количеством потоков 2 и максимальным 5
-            return new FixedThreadPool(1);
+            return new FixedThreadPool(15);
         } else {
             // Создаем фиксированный пул с 3 потоками
             return new ScalableThreadPool(2, 5);

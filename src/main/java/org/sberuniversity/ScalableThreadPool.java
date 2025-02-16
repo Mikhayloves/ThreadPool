@@ -21,7 +21,7 @@ public class ScalableThreadPool implements ThreadPool {
         this.minThreads = minThreads;
         this.maxThreads = maxThreads;
         freeThreadsCount = new AtomicInteger(minThreads);
-        workerDoneCallback = () -> {
+        workerDoneCallback = (workerRef) -> {
             if (queue.isEmpty()) {
                 synchronized (workerDoneCallbackLock) {
                     if (workers.size() > this.minThreads) {
@@ -29,6 +29,14 @@ public class ScalableThreadPool implements ThreadPool {
                         workers.remove((Worker) Thread.currentThread());
                         freeThreadsCount.decrementAndGet();
                         Thread.currentThread().interrupt();
+                    }
+                    if(isQueueBlocked && freeThreadsCount.get() == workers.size()){
+                        for(Worker worker : workers){
+                            if(worker != workerRef){
+                                worker.interrupt();
+                            }
+                        }
+                        workerRef.interrupt();
                     }
                 }
             }
@@ -61,27 +69,14 @@ public class ScalableThreadPool implements ThreadPool {
         queue.offer(task);
     }
 
-    @Override
-    public void waitForTasks() {
-        isQueueBlocked = true;
-        while (!queue.isEmpty()) {
-            while (freeThreadsCount.get() != workers.size()) {
-            }
-        }
-        isQueueBlocked = false;
-    }
 
     @Override
     public void shutdown() {
-        waitForTasks();
         isQueueBlocked = true;
-        for (Worker worker : workers) {
-            worker.interrupt();
-        }
     }
 
     private  interface WorkerDoneCallback {
-        void onDone();
+        void onDone(Worker worker);
     }
 
     private static class Worker extends Thread {
@@ -109,7 +104,7 @@ public class ScalableThreadPool implements ThreadPool {
                     task.run();
                     freeThreadsCount.incrementAndGet();
                     isWorking = false;
-                    workerDoneCallback.onDone();
+                    workerDoneCallback.onDone(this);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
